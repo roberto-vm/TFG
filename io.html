@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Demo del sensor de JavaScript</title>
+</head>
+<body>
+<main role="main">
+
+<h1>Demo del sensor de JavaScript.</h1>
+<p><b>Esta pagina se debe de ejecutar desde una table o un telefono movil.</b></p>
+<p>Esta pagina muestra como distintas webs pueden acceder a los datos del sensor de un dispositivo movil
+  usando <a href="https://developer.mozilla.org/en-US/docs/Web/Events/deviceorientation"><i>deviceorientation</i></a> events.</p>
+
+<p><i>deviceorientation</i> proporciona componentes <i>alpha</i>, <i>beta</i> and <i>gamma</i> que corresponden con la orientacion de los ejes x,y,z, respectivamente.</p>
+
+<div id="demo-div">
+<a id="start_demo" href="#">Empezar la demo</a>
+<p>Num. de datapoints: <span id="num-observed-events">0</span></p>
+
+<h4>Orientacion</h4>
+<ul>
+  <li>X-axis (&beta;): <span id="Orientation_b">0</span>&deg;</li>
+  <li>Y-axis (&gamma;): <span id="Orientation_g">0</span>&deg;</li>
+  <li>Z-axis (&alpha;): <span id="Orientation_a">0</span>&deg;</li>
+</ul>
+
+<h4>Inclinacion</h4>
+<ul>
+  <li>Tilt Forward-Backward (Pitch): <span id="Inclination_pitch">0</span>&deg;</li>
+  <li>Tilt Left-Right (Roll): <span id="Inclination_roll">0</span>&deg;</li>
+</ul>
+</div>
+</main>
+
+<footer>
+  <p>Esta pagina esta disponible en Github, puede ver mas contenido relacionado con el TFG
+  <a href="https://github.com/roberto-vm">aqui</a>.</p>
+</footer>
+
+<script>
+function handleOrientation(event) {
+  updateFieldIfNotNull('Orientation_a', event.alpha);
+  updateFieldIfNotNull('Orientation_b', event.beta);
+  updateFieldIfNotNull('Orientation_g', event.gamma);
+
+  let pitch = event.beta;
+  let roll = event.gamma;
+  updateFieldIfNotNull('Inclination_pitch', pitch);
+  updateFieldIfNotNull('Inclination_roll', roll);
+
+  incrementEventCount();
+}
+
+function incrementEventCount(){
+  let counterElement = document.getElementById("num-observed-events");
+  let eventCount = parseInt(counterElement.innerHTML);
+  counterElement.innerHTML = eventCount + 1;
+}
+
+function updateFieldIfNotNull(fieldName, value, precision=10){
+  if (value != null)
+    document.getElementById(fieldName).innerHTML = value.toFixed(precision);
+}
+
+let is_running = false;
+let demo_button = document.getElementById("start_demo");
+demo_button.onclick = function(e) {
+  e.preventDefault();
+
+  if (
+    DeviceOrientationEvent &&
+    typeof DeviceOrientationEvent.requestPermission === "function"
+  ) {
+    DeviceOrientationEvent.requestPermission();
+  }
+
+  if (is_running){
+    window.removeEventListener("deviceorientation", handleOrientation);
+    demo_button.innerHTML = "Start demo";
+    is_running = false;
+  }else{
+    window.addEventListener("deviceorientation", handleOrientation);
+    demo_button.innerHTML = "Stop demo";
+    is_running = true;
+  }
+};
+</script>
+</body>
+</html>
