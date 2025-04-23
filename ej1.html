@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Tomar Foto</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    video, canvas {
+      width: 100%;
+      max-width: 400px;
+      margin-top: 10px;
+      border-radius: 10px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tomar Foto</h1>
+  <video id="video" autoplay playsinline></video>
+  <br>
+  <button id="snap" disabled>📸 Tomar Foto</button>
+  <br>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const snap = document.getElementById('snap');
+    const context = canvas.getContext('2d');
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => {
+        video.srcObject = stream;
+
+        const waitForVideoReady = () => {
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            snap.disabled = false; // Ahora sí puedes tomar foto
+          } else {
+            requestAnimationFrame(waitForVideoReady); // Espera al siguiente frame
+          }
+        };
+
+        video.onloadedmetadata = () => {
+          video.play();
+          waitForVideoReady(); // Esperar a que tenga dimensiones reales
+        };
+      })
+      .catch(err => {
+        alert("Error al acceder a la cámara: " + err);
+      });
+
+    snap.addEventListener('click', () => {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    });
+  </script>
+</body>
+</html>
+
