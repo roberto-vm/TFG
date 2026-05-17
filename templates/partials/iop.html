@@ -1,0 +1,17 @@
+<h2>Foto + orientación</h2>
+
+<div class="iop-wrap">
+  <video id="iop-video" autoplay playsinline muted style="width:100%;max-width:520px;border:1px solid #ddd;border-radius:8px;background:#000"></video>
+
+  <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <button id="iop-start">Start</button>
+    <button id="iop-snapshot" disabled>Tomar foto</button>
+    <span id="iop-sensor" style="opacity:.8;">pitch: — | heading: —</span>
+  </div>
+
+  <!-- Preview opcional (no aparece en “Estado actual”) -->
+  <img id="iop-preview" alt="Preview" style="display:none; margin-top:10px; max-width:320px; border:1px solid #ddd; border-radius:8px;" />
+</div>
+
+<!-- Canvas oculto para tomar el frame -->
+<canvas id="iop-canvas" style="display:none;"></canvas>

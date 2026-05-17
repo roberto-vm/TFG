@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Pitágoras – Demo</title>
+  <style>
+    :root {
+      --border: #ddd;
+      --bg: #f8f8f8;
+    }
+
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: var(--bg);
+      color: #333;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      height: 100vh;
+      box-sizing: border-box;
+      padding: 16px;
+    }
+
+    /* Slides */
+    .slide {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      padding: 18px;
+      height: 100%;
+      box-sizing: border-box;
+    }
+
+    .nav {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .nav button {
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 8px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+
+    .nav button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    /* Estado actual (panel inferior) */
+    .state-panel {
+      border-top: 1px solid var(--border);
+      background: #fff;
+      padding: 16px 18px;
+    }
+
+    .state-panel header {
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Seccion creada con el proposito de mostrar cada slide con  -->
+    <!-- su respectivo contenido  -->
+    <section class="left">
+      <div class="slide" data-partial="gps"></div>
+      <div class="slide" data-partial="fov"></div>
+      <div class="slide" data-partial="iop"></div>
+      <div class="slide" data-partial="solution"></div>
+
+      <div class="nav">
+        <button id="prev-slide">←</button>
+        <span id="slide-indicator">1/4</span>
+        <button id="next-slide">→</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Seccion ( o panel) que muestra el estado de cada una de  -->
+  <!-- las variables obtenidas desde el lado del cliente -->
+  <section class="state-panel">
+    <header>Estado actual</header>
+    <div id="state" class="server-state"></div>
+  </section>
+
+  <!-- Se le comunica al navegador que ese archivo .js sera un modulo-->
+  <!-- y no un script tradicional. No contamina el espacio global (window) -->
+  <!-- porque cada uno tiene su propio scope -->
+  <!-- Tambien se carga en modo diferido (defer), es decir, no bloquea el -->
+  <!-- renderizado HTML y se ejecuta despues de que DOM este listo -->
+  <script type="module" src="/static/script/deck.js"></script>
+  <script type="module" src="/static/script/gps.js"></script>
+  <script type="module" src="/static/script/fov.js"></script>
+  <script type="module" src="/static/script/iop.js"></script>
+  <script type="module" src="/static/script/solution.js"></script>
+</body>
+</html>
