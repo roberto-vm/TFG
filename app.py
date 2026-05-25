@@ -215,8 +215,8 @@ def api_solution():
 
     img = Image.open(fs_path).convert("RGB")
 
-
-    fecha_hora = pd.Timestamp(hora_iso, tz="UTC")
+    DESFASE_HORAS = 6
+    fecha_hora = pd.Timestamp(hora_iso, tz="UTC") - pd.Timedelta(hours=DESFASE_HORAS)
 
     #Instancia de PhotoProjection
     proyeccion = PhotoProjection(
@@ -442,4 +442,6 @@ def add_no_cache(resp):
     return resp
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    #app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run( host="0.0.0.0", port=port, debug=True )
