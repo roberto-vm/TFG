@@ -8,6 +8,10 @@ from flask import Flask, render_template, request, jsonify
 import pandas as pd
 
 from PIL import Image
+
+import matplotlib
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
@@ -214,6 +218,7 @@ def api_solution():
         return ("Imagen no disponible: archivo no encontrado.", 404)
 
     img = Image.open(fs_path).convert("RGB")
+    img.thumbnail((1200, 1200))
 
     DESFASE_HORAS = 6
     fecha_hora = pd.Timestamp(hora_iso, tz="UTC") - pd.Timedelta(hours=DESFASE_HORAS)
