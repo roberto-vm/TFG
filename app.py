@@ -46,13 +46,13 @@ STATE = {
 
 #colores de los meses
 COLORES_MESES = {
-    12: "blue",     # Diciembre
-    1:  "green",    # Enero
-    2:  "pink",     # Febrero
-    3:  "purple",   # Marzo
-    4:  "yellow",   # Abril
-    5:  "orange",   # Mayo
-    6:  "red",      # Junio
+    12: "#FFF9E6",  # blanco cálido invernal
+    1:  "#FFF2CC",  # crema
+    2:  "#FFE699",  # amarillo suave
+    3:  "#FFD966",  # dorado
+    4:  "#FFC000",  # amarillo intenso
+    5:  "#F4B183",  # naranja suave
+    6:  "#E69138",  # naranja cálido
 }
 
 #Cuando el cliente accede a la URL indicada, se ejecuta la funcion mostrada
@@ -218,10 +218,10 @@ def api_solution():
         return ("Imagen no disponible: archivo no encontrado.", 404)
 
     img = Image.open(fs_path).convert("RGB")
-    img.thumbnail((1200, 1200))
+    #img.thumbnail((1200, 1200))
 
-    DESFASE_HORAS = 6
-    fecha_hora = pd.Timestamp(hora_iso, tz="UTC") - pd.Timedelta(hours=DESFASE_HORAS)
+    #DESFASE_HORAS = 6
+    fecha_hora = pd.Timestamp(hora_iso, tz="UTC")
 
     #Instancia de PhotoProjection
     proyeccion = PhotoProjection(
@@ -372,11 +372,11 @@ def api_solution():
             # Dibujar los dias 21 de cada mes
             if len(lista_u) >= 2 and fecha_hora_k.day == 21:
                 mes = int(fecha_hora_k.month)
-                color = COLORES_MESES.get(mes, "white")  # fallback
+                color = COLORES_MESES.get(mes, "#FFFFFF")  # fallback
                 trayectorias_uv.append((fecha_hora_k, lista_u, lista_v, color))
             # Dibujar si coincide con el dia de hoy
             if len(lista_u) >= 2 and fecha_hora_k.date() == fecha_objetivo:
-                color = "cyan"  # o "lime", "magenta", etc.
+                color = "#FFCC00"  # Amarillo Solar Intenso
                 trayectorias_uv.append((fecha_hora_k, lista_u, lista_v, color))
                 irradiacion_hoy = irradiacion_total
 
@@ -423,7 +423,7 @@ def api_solution():
             markeredgewidth=0
         )
 
-    ax.scatter([u], [v], s=120, c="yellow", edgecolors="black", linewidths=1.0, zorder=10)
+    ax.scatter([u], [v], s=400, c="#FFCC00", edgecolors="black", linewidths=2.0, zorder=10)
     ax.axis('off')
 
     output = io.BytesIO()
