@@ -43,7 +43,19 @@ STATE = {
     "iop_image_ok": False,
     "iop_image_url": None,
 }
-
+def reset_state():
+    STATE.update({
+        "latitud": None,
+        "longitud": None,
+        "fov": None,
+        "iop_instant": None,
+        "iop_width": None,
+        "iop_height": None,
+        "iop_pitch": None,
+        "iop_heading": None,
+        "iop_image_ok": False,
+        "iop_image_url": None,
+    })
 #colores de los meses
 COLORES_MESES = {
     12: "#FFF9E6",  # blanco cálido invernal
@@ -53,11 +65,18 @@ COLORES_MESES = {
     4:  "#FFC000",  # amarillo intenso
     5:  "#F4B183",  # naranja suave
     6:  "#E69138",  # naranja cálido
+
+    7:  "#D97A2B",  # naranja verano
+    8:  "#C96A1A",  # ámbar intenso
+    9:  "#B85C0A",  # cobre
+    10: "#996515",  # ocre otoñal
+    11: "#C2A878",  # beige otoñal
 }
 
 #Cuando el cliente accede a la URL indicada, se ejecuta la funcion mostrada
 @app.route("/")
 def index():
+    reset_state()
     return render_template("index.html")
 #render_template busca un archivo HTML en la carpeta templates, lee el archivo,
 #convierte al archivo en una respuesta web, y, lo envia al navegador.
@@ -261,9 +280,54 @@ def api_solution():
     irradiacion_hoy = 0.0  # ← AQUÍ
     fecha_objetivo = fecha_hora.date()  # ← Y AQUÍ
 
-    # "start" representa el solsticio de invierno, y "end", el de verano
-    start = fecha_hora.replace(year=2025, month=12, day=21)
-    end = fecha_hora.replace(year=2026, month=6, day=21)
+    actual_year = fecha_hora.year
+    actual_month = fecha_hora.month
+    actual_day = fecha_hora.day
+
+    # 1) Entre 1 Ene y 21 Jun
+    if (
+            actual_month < 6
+            or (actual_month == 6 and actual_day <= 21)
+    ):
+        start = fecha_hora.replace(
+            year=actual_year - 1,
+            month=12,
+            day=21
+        )
+        end = fecha_hora.replace(
+            year=actual_year,
+            month=6,
+            day=21
+        )
+
+    # 2) Entre 22 Jun y 21 Dic
+    elif (
+            actual_month < 12
+            or (actual_month == 12 and actual_day <= 21)
+    ):
+        start = fecha_hora.replace(
+            year=actual_year,
+            month=6,
+            day=21
+        )
+        end = fecha_hora.replace(
+            year=actual_year,
+            month=12,
+            day=21
+        )
+
+    # 3) Entre 22 Dic y 31 Dic
+    else:
+        start = fecha_hora.replace(
+            year=actual_year,
+            month=12,
+            day=21
+        )
+        end = fecha_hora.replace(
+            year=actual_year + 1,
+            month=6,
+            day=21
+        )
 
     tracks_dir = os.path.join(app.root_path, "static", "tracks")
     os.makedirs(tracks_dir, exist_ok=True)
