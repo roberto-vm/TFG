@@ -466,8 +466,8 @@ def api_solution():
 
             # 3) Irradiancias
             f.write(
-                f"3) Irradiancia_global = {irradiacion_global:.2f}"
-                f"    -    Irradiancia_total = {irradiacion_total:.2f}\n"
+                f"3) Irradiacion_global = {irradiacion_global:.2f}"
+                f"    -    Irradiacion_total = {irradiacion_total:.2f}\n"
             )
 
             f.write("*" * 80 + "\n")
