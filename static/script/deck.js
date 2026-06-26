@@ -41,7 +41,7 @@ function initDeck() {
 // Refresca y actualiza el estado desde el servidor
 async function refreshState() {
   try {
-    const resp = await fetch("/api/state");
+    const resp = await fetch("/api/state", { cache: "no-store" });
     const data = await resp.json();
     const stateDiv = document.querySelector("#state");
     if (stateDiv) {

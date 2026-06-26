@@ -21,7 +21,7 @@ document.addEventListener("click", (e) => {
             body: JSON.stringify({ latitud: latitude, longitud: longitude }),
           });
           await resp.json();
-          window.refreshState();
+          await window.refreshState?.();
 
           const geo = document.querySelector("#geo");
           if (geo) geo.textContent="Lat: " + latitude +", Lon: " + longitude;

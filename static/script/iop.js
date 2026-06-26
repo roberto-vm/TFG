@@ -187,7 +187,7 @@ async function takeSnapshotAndSend() {
     // Se asigna la imagen en formato base64 al elemento <img>
     // 'block' desactiva la ocultacion del elemento
     if (img) { img.src = dataUrl; img.style.display = "block"; }
-    window.refreshState?.();
+    await window.refreshState?.();
   } catch (err) {
     console.error("Error enviando IOP", err);
   }

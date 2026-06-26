@@ -19,7 +19,7 @@ document.addEventListener("click", async (e) => {
         body: JSON.stringify({ fov: val }),
       });
       await resp.json();
-      window.refreshState();
+      await window.refreshState?.();
 
       const output = document.querySelector("#output-fov");
       if (output)

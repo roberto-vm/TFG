@@ -239,8 +239,8 @@ def api_solution():
     img = Image.open(fs_path).convert("RGB")
     #img.thumbnail((1200, 1200))
 
-    #DESFASE_HORAS = 6
-    fecha_hora = pd.Timestamp(hora_iso, tz="UTC")
+    DESFASE_HORAS = 9
+    fecha_hora = pd.Timestamp(hora_iso, tz="UTC") - pd.Timedelta(hours=DESFASE_HORAS)
 
     #Instancia de PhotoProjection
     proyeccion = PhotoProjection(
@@ -279,6 +279,7 @@ def api_solution():
     irradiacion_global = 0.0
     irradiacion_hoy = 0.0  # ← AQUÍ
     fecha_objetivo = fecha_hora.date()  # ← Y AQUÍ
+    datos_iteraciones_hoy = {}
 
     actual_year = fecha_hora.year
     actual_month = fecha_hora.month
@@ -395,6 +396,7 @@ def api_solution():
             valid = [False] * len(times_i)
             lista_u = []
             lista_v = []
+            es_dia_foto = fecha_hora_k.date() == fecha_objetivo
 
             try:
                 for i, t_i in enumerate(times_i):
@@ -408,6 +410,14 @@ def api_solution():
                         continue
 
                     is_blue = _pixel_es_azul(img, u_i, v_i, foto_ancho, foto_alto, trayectoria)
+
+                    if es_dia_foto:
+                        datos_iteraciones_hoy[i + 1] = {
+                            "t_i": t_i.isoformat(),
+                            "u_i": float(u_i),
+                            "v_i": float(v_i),
+                            "is_blue": bool(is_blue),
+                        }
 
                     if is_blue:
                         poa_t = float(poa_df["poa_global"].iloc[i])
@@ -499,9 +509,10 @@ def api_solution():
 
     return jsonify({
         "image": f"data:image/png;base64,{img_b64}",
-        "irradiancia_solar":irradiancia_solar,
-        "irradiacion_hoy":irradiacion_hoy,
-        "irradiacion_global":irradiacion_global
+        "irradiancia_solar": irradiancia_solar,
+        "irradiacion_hoy": irradiacion_hoy,
+        "irradiacion_global": irradiacion_global,
+        "datos_iteraciones_hoy": datos_iteraciones_hoy
     })
 
 
