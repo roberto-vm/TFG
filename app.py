@@ -4,7 +4,7 @@ import io
 import base64
 from datetime import datetime
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session
 import pandas as pd
 
 from PIL import Image
@@ -22,16 +22,12 @@ from Trayectoria import Trayectoria
 #Imprescindible para definir rutas, ejecutar el servidor, encontrar recursos como
 #plantillas o archivos estaticos, etc.
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
 
-#Declaramos 2 diccionarios para: el estado en memoria y los colores de las trayectorias
-#mensuales.
-
-#Para este proyecto, recurrimos a los diccionarios y no a las clases, porque encajan
-#directamente con JSON, requieren menos codigos y son mas flexibles a la hora de
-#trabajar con datos dinamicos
-
-# Estado en memoria
-STATE = {
+# Estado por usuario mediante session de Flask.
+# Cada navegador mantiene sus propios datos temporales, evitando problemas
+# con variables globales en producción.
+SESSION_DEFAULTS = {
     "latitud": None,
     "longitud": None,
     "fov": None,
@@ -43,19 +39,13 @@ STATE = {
     "iop_image_ok": False,
     "iop_image_url": None,
 }
-def reset_state():
-    STATE.update({
-        "latitud": None,
-        "longitud": None,
-        "fov": None,
-        "iop_instant": None,
-        "iop_width": None,
-        "iop_height": None,
-        "iop_pitch": None,
-        "iop_heading": None,
-        "iop_image_ok": False,
-        "iop_image_url": None,
-    })
+
+def get_session_state():
+    return {k: session.get(k, v) for k, v in SESSION_DEFAULTS.items()}
+
+def reset_session_state():
+    for k, v in SESSION_DEFAULTS.items():
+        session[k] = v
 #colores de los meses
 COLORES_MESES = {
     12: "#FFF9E6",  # blanco cálido invernal
@@ -76,14 +66,14 @@ COLORES_MESES = {
 #Cuando el cliente accede a la URL indicada, se ejecuta la funcion mostrada
 @app.route("/")
 def index():
-    reset_state()
+    reset_session_state()
     return render_template("index.html")
 #render_template busca un archivo HTML en la carpeta templates, lee el archivo,
 #convierte al archivo en una respuesta web, y, lo envia al navegador.
 
 @app.route("/api/state")
 def api_state():
-    return jsonify({"ok": True, **STATE})
+    return jsonify({"ok": True, **get_session_state()})
 
 
 @app.route("/api/gps", methods=["POST"])
@@ -91,15 +81,15 @@ def api_gps():
     # request se emplea para leer datos que el cliente envia al servidor
     # en nuestro caso, con una peticion POST
     data = request.get_json(force=True)
-    STATE["latitud"] = data.get("latitud")
-    STATE["longitud"] = data.get("longitud")
+    session["latitud"] = data.get("latitud")
+    session["longitud"] = data.get("longitud")
     return jsonify(ok=True, msg="GPS actualizado")
     # devuelve al cliente un formato json
 
 @app.route("/api/fov", methods=["POST"])
 def api_fov():
     data = request.get_json(force=True)
-    STATE["fov"] = data.get("fov")
+    session["fov"] = data.get("fov")
     return jsonify(ok=True, msg="FOV actualizado")
 
 
@@ -108,16 +98,16 @@ def api_iop():
     data = request.get_json(force=True) or {}
 
     # Actualiza campos numéricos / string
-    STATE["iop_instant"] = data.get("instant")
-    STATE["iop_width"] = data.get("width")
-    STATE["iop_height"] = data.get("height")
-    STATE["iop_pitch"] = data.get("pitch")
-    STATE["iop_heading"] = data.get("heading")
+    session["iop_instant"] = data.get("instant")
+    session["iop_width"] = data.get("width")
+    session["iop_height"] = data.get("height")
+    session["iop_pitch"] = data.get("pitch")
+    session["iop_heading"] = data.get("heading")
 
     # Procesamiento de imagen Data URL
     img_data_url = data.get("image")
-    STATE["iop_image_ok"] = False
-    STATE["iop_image_url"] = None
+    session["iop_image_ok"] = False
+    session["iop_image_url"] = None
 
     if isinstance(img_data_url, str):
         #^ Indica el inicio del texto
@@ -139,7 +129,7 @@ def api_iop():
                 # El nombre del archivo con la extension .jpg o .png,
                 # no eso otro que la variable temporal del instante en el que
                 # se toma la foto del Sol
-                stamp = STATE["iop_instant"] or datetime.utcnow().strftime("%d-%m-%Y_%H-%M-%S")
+                stamp = session.get("iop_instant") or datetime.utcnow().strftime("%d-%m-%Y_%H-%M-%S")
                 fname = f"iop_{stamp}.{ext}"
                 # Se sanitiza el nombre o se reemplaza cualquier caracter
                 # que no sea seguro, por motivos de seguridad y compatibilidad
@@ -147,8 +137,8 @@ def api_iop():
                 fpath = os.path.join(up_dir, fname)
                 with open(fpath, "wb") as f:
                     f.write(blob)
-                STATE["iop_image_ok"] = True
-                STATE["iop_image_url"] = f"/static/uploads/{fname}"
+                session["iop_image_ok"] = True
+                session["iop_image_url"] = f"/static/uploads/{fname}"
             except Exception as exc:
                 print("Error guardando imagen:", exc)
 
@@ -210,7 +200,7 @@ def _pixel_es_azul(img, u, v, ancho, alto, trayectoria):
 
 @app.route("/api/solution", methods=["POST"])
 def api_solution():
-    state = STATE
+    state = get_session_state()
     if not _state_ready(state):
         return ("Imagen no disponible: faltan datos"
                 " (GPS/FOV/IOP).", 400)
