@@ -229,8 +229,9 @@ def api_solution():
     img = Image.open(fs_path).convert("RGB")
     #img.thumbnail((1200, 1200))
 
-    DESFASE_HORAS = 9
-    fecha_hora = pd.Timestamp(hora_iso, tz="UTC") - pd.Timedelta(hours=DESFASE_HORAS)
+    #DESFASE_HORAS = 9
+    #fecha_hora = pd.Timestamp(hora_iso, tz="UTC") - pd.Timedelta(hours=DESFASE_HORAS)
+    fecha_hora = pd.Timestamp(hora_iso, tz="UTC")
 
     #Instancia de PhotoProjection
     proyeccion = PhotoProjection(
