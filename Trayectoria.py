@@ -124,20 +124,19 @@ class Trayectoria:
     def es_azul(rgb):
         r, g, b = rgb
 
-        # Caso 1: Azul dominante en RGB
-        if b > 200:
+        # Caso 1: Sol o zona muy brillante (blanco)
+        if r >= 230 and g >= 230 and b >= 230:
             return True
 
-        # Normalizamos RGB a [0,1]
+        # Convertimos a HSV
         r_n = r / 255.0
         g_n = g / 255.0
         b_n = b / 255.0
 
         h, s, v = colorsys.rgb_to_hsv(r_n, g_n, b_n)
-        h_deg = h * 360.0
 
-        # Caso 2: Azul según HSV
-        if 200.0 <= h_deg <= 240.0 and s >= 0.20:
+        # Caso 2: Cielo azul
+        if b > 200 and s >= 0.20:
             return True
 
         return False

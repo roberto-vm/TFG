@@ -271,6 +271,8 @@ def api_solution():
     irradiacion_hoy = 0.0  # ← AQUÍ
     fecha_objetivo = fecha_hora.date()  # ← Y AQUÍ
     datos_iteraciones_hoy = {}
+    dias_sol_entra_imagen = 0
+    duracion_hoy_min = None
 
     actual_year = fecha_hora.year
     actual_month = fecha_hora.month
@@ -353,6 +355,8 @@ def api_solution():
                     print(f"[SOL] El sol no entra en la imagen (t0={fecha_hora_k.isoformat()}).")
                     continue
 
+                dias_sol_entra_imagen += 1
+
                 t_entrada = resultado["t_entrada"]
                 u_entrada = resultado["u_entrada"]
                 v_entrada = resultado["v_entrada"]
@@ -404,7 +408,7 @@ def api_solution():
 
                     if es_dia_foto:
                         datos_iteraciones_hoy[i + 1] = {
-                            "t_i": t_i.isoformat(),
+                            "t_i": t_i.strftime("%d/%m/%Y %H:%M"),
                             "u_i": float(u_i),
                             "v_i": float(v_i),
                             "is_blue": bool(is_blue),
@@ -447,6 +451,9 @@ def api_solution():
 
             dt_tray = (t_salida - t_entrada)
 
+            if fecha_hora_k.date() == fecha_objetivo:
+                duracion_hoy_min = round(dt_tray.total_seconds() / 60)
+
             # Escritura en fichero
             f.write(f"TRAYECTORIA    {fecha_hora_k.strftime('%d/%m/%Y')}\n")
 
@@ -484,11 +491,11 @@ def api_solution():
             linewidth=2,
             color=color,
             marker="o",
-            markersize=3,
+            markersize=8,
             markeredgewidth=0
         )
 
-    ax.scatter([u], [v], s=400, c="#FFCC00", edgecolors="black", linewidths=2.0, zorder=10)
+    ax.scatter([u], [v], s=700, c="#FFCC00", edgecolors="black", linewidths=2.0, zorder=10)
     ax.axis('off')
 
     output = io.BytesIO()
@@ -503,7 +510,9 @@ def api_solution():
         "irradiancia_solar": irradiancia_solar,
         "irradiacion_hoy": irradiacion_hoy,
         "irradiacion_global": irradiacion_global,
-        "datos_iteraciones_hoy": datos_iteraciones_hoy
+        "datos_iteraciones_hoy": datos_iteraciones_hoy,
+        "duracion_hoy_min": duracion_hoy_min,
+        "dias_sol_entra_imagen": dias_sol_entra_imagen
     })
 
 

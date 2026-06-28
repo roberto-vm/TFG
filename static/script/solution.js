@@ -85,12 +85,27 @@ async function runSolution($root) {
     const irrSolar = data.irradiancia_solar;
     const irrHoy = data.irradiacion_hoy;
     const irrGlobal = data.irradiacion_global;
+    const duracionHoy = data.duracion_hoy_min;
+    const diasSol = data.dias_sol_entra_imagen;
 
     values.innerHTML = `
-      <p><strong>Irradiancia solar:</strong> ${irrSolar ?? "N/D"} W/m²</p>
-      <p><strong>Irradiación hoy:</strong> ${irrHoy ?? "N/D"} Wh/m²</p>
-      <p><strong>Irradiación global:</strong> ${irrGlobal ?? "N/D"} Wh/m²</p>
-    `;
+     <p>
+       <strong>Irradiancia solar:</strong><br>
+       ${irrSolar ?? "N/D"} W/m²
+     </p>
+
+     <p>
+       <strong>Irradiación hoy:</strong><br>
+       ${irrHoy ?? "N/D"} Wh/m²<br>
+       <small>Tiempo con el Sol en la imagen: ${duracionHoy ?? "N/D"} min</small>
+     </p>
+
+     <p>
+       <strong>Irradiación global:</strong><br>
+       ${irrGlobal ?? "N/D"} Wh/m²<br>
+       <small>${diasSol ?? "N/D"} días con Sol en la imagen</small>
+     </p>
+     `;
 
     const datosIteracionesHoy = data.datos_iteraciones_hoy || {};
 
@@ -105,7 +120,7 @@ async function runSolution($root) {
             <td style="padding:6px;border-bottom:1px solid #ddd;">${dato.t_i ?? "N/D"}</td>
             <td style="padding:6px;border-bottom:1px solid #ddd;">${Number.isFinite(u) ? u.toFixed(2) : "N/D"}</td>
             <td style="padding:6px;border-bottom:1px solid #ddd;">${Number.isFinite(v) ? v.toFixed(2) : "N/D"}</td>
-            <td style="padding:6px;border-bottom:1px solid #ddd;">${dato.is_blue ? "Azul" : "No azul"}</td>
+            <td style="padding:6px;border-bottom:1px solid #ddd;">${dato.is_blue ? "SI" : "NO"}</td>
           </tr>
         `;
       })
@@ -125,7 +140,7 @@ async function runSolution($root) {
                     <th style="text-align:left;padding:6px;border-bottom:1px solid #ccc;">t_i</th>
                     <th style="text-align:left;padding:6px;border-bottom:1px solid #ccc;">u_i</th>
                     <th style="text-align:left;padding:6px;border-bottom:1px solid #ccc;">v_i</th>
-                    <th style="text-align:left;padding:6px;border-bottom:1px solid #ccc;">is_blue</th>
+                    <th style="text-align:left;padding:6px;border-bottom:1px solid #ccc;">Obstaculo</th>
                   </tr>
                 </thead>
                 <tbody>
