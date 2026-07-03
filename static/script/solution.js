@@ -120,7 +120,7 @@ async function runSolution($root) {
             <td style="padding:6px;border-bottom:1px solid #ddd;">${dato.t_i ?? "N/D"}</td>
             <td style="padding:6px;border-bottom:1px solid #ddd;">${Number.isFinite(u) ? u.toFixed(2) : "N/D"}</td>
             <td style="padding:6px;border-bottom:1px solid #ddd;">${Number.isFinite(v) ? v.toFixed(2) : "N/D"}</td>
-            <td style="padding:6px;border-bottom:1px solid #ddd;">${dato.is_blue ? "SI" : "NO"}</td>
+            <td style="padding:6px;border-bottom:1px solid #ddd;">${dato.is_blue ? "NO" : "SI"}</td>
           </tr>
         `;
       })

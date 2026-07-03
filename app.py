@@ -26,7 +26,7 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
 
 # Estado por usuario mediante session de Flask.
 # Cada navegador mantiene sus propios datos temporales, evitando problemas
-# con variables globales en producción.
+# con variables globales en produccion.
 SESSION_DEFAULTS = {
     "latitud": None,
     "longitud": None,
@@ -229,7 +229,7 @@ def api_solution():
     img = Image.open(fs_path).convert("RGB")
     #img.thumbnail((1200, 1200))
 
-    #DESFASE_HORAS = 9
+    #DESFASE_HORAS = 8
     #fecha_hora = pd.Timestamp(hora_iso, tz="UTC") - pd.Timedelta(hours=DESFASE_HORAS)
     fecha_hora = pd.Timestamp(hora_iso, tz="UTC")
 

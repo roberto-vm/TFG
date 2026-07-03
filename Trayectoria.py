@@ -136,7 +136,7 @@ class Trayectoria:
         h, s, v = colorsys.rgb_to_hsv(r_n, g_n, b_n)
 
         # Caso 2: Cielo azul
-        if b > 200 and s >= 0.20:
+        if b > 200 and s >= 0.30:
             return True
 
         return False
