@@ -121,7 +121,7 @@ class Trayectoria:
         }
 
     @staticmethod
-    def is_blue_or_solar_light(rgb):
+    def es_azul(rgb):
 
         r, g, b = rgb
 
