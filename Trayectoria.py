@@ -121,25 +121,43 @@ class Trayectoria:
         }
 
     @staticmethod
-    def es_azul(rgb):
+    def is_blue_or_solar_light(rgb):
+
         r, g, b = rgb
 
-        # Caso 1: Sol o zona muy brillante (blanco)
-        if r >= 230 and g >= 230 and b >= 230:
+        # 1) Sol o brillo muy intenso
+        if r > 200 and g > 200 and b > 200:
             return True
 
-        # Convertimos a HSV
+        # 2) Conversión a HSV
+            # Convertimos a HSV
         r_n = r / 255.0
         g_n = g / 255.0
         b_n = b / 255.0
 
         h, s, v = colorsys.rgb_to_hsv(r_n, g_n, b_n)
 
-        # Caso 2: Cielo azul
-        if b > 200 and s >= 0.30:
-            return True
+        # 3) Hue: solamente azules
+        if not (195 <= h <= 240):
+            return False
 
-        return False
+        # 4) Saturación mínima. Evita blancos, grises y muchas nubes.
+        if s < 35:
+            return False
+
+        # 5) Brillo mínimo. Evita sombras muy oscuras.
+        if v < 35:
+            return False
+
+        # 6) El azul debe dominar claramente
+        if b < g + 10:
+            return False
+
+        if b < r + 25:
+            return False
+
+
+        return True
 
     def estimar_longitud_px(self, t_ini, t_fin, freq="1min"):
         times_g = pd.date_range(start=t_ini, end=t_fin, freq=freq, tz=t_ini.tz)
