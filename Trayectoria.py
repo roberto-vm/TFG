@@ -137,6 +137,10 @@ class Trayectoria:
 
         h, s, v = colorsys.rgb_to_hsv(r_n, g_n, b_n)
 
+        h *= 360
+        s *= 100
+        v *= 100
+
         # 3) Hue: solamente azules
         if not (195 <= h <= 240):
             return False
