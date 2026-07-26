@@ -229,9 +229,9 @@ def api_solution():
     img = Image.open(fs_path).convert("RGB")
     #img.thumbnail((1200, 1200))
 
-    #DESFASE_HORAS = 8
-    #fecha_hora = pd.Timestamp(hora_iso, tz="UTC") - pd.Timedelta(hours=DESFASE_HORAS)
-    fecha_hora = pd.Timestamp(hora_iso, tz="UTC")
+    DESFASE_HORAS = 9
+    fecha_hora = pd.Timestamp(hora_iso, tz="UTC") - pd.Timedelta(hours=DESFASE_HORAS)
+    #fecha_hora = pd.Timestamp(hora_iso, tz="UTC")
 
     #Instancia de PhotoProjection
     proyeccion = PhotoProjection(
@@ -397,12 +397,15 @@ def api_solution():
                 for i, t_i in enumerate(times_i):
                     u_i, v_i, el_i = trayectoria._posicion_sol(t_i)
 
-                    lista_u.append(u_i)
-                    lista_v.append(v_i)
+                    #lista_u.append(u_i)
+                    #lista_v.append(v_i)
 
                     dentro_i = trayectoria._esta_dentro(u_i, v_i, el_i)
                     if not dentro_i:
                         continue
+
+                    lista_u.append(u_i)
+                    lista_v.append(v_i)
 
                     is_blue = _pixel_es_azul(img, u_i, v_i, foto_ancho, foto_alto, trayectoria)
 
@@ -484,6 +487,9 @@ def api_solution():
     # --- Draw overlay --- #
     fig, ax = plt.subplots()
     ax.imshow(img)
+
+    ax.set_xlim(0, foto_ancho)
+    ax.set_ylim(foto_alto, 0)
 
     for (t_base, tu, tv, color) in trayectorias_uv:
         ax.plot(

@@ -14,9 +14,12 @@ class Trayectoria:
     # Helpers
     def _esta_dentro(self, u, v, elev):
         return (
-            (elev > 0)
-            and (0 <= u < self.proyeccion.width)
-            and (0 <= v < self.proyeccion.height)
+            np.isfinite(u)
+            and np.isfinite(v)
+            and np.isfinite(elev)
+            and elev > 0
+            and 0 <= u < self.proyeccion.width
+            and 0 <= v < self.proyeccion.height
         )
 
     def _posiciones_sol(self, tiempos):
@@ -58,6 +61,7 @@ class Trayectoria:
         return t_final, u_final, v_final, e_final
 
     def buscar_entrada_salida_sol(self, t0, margen_horas=12, paso_grueso_min=5):
+
         inicio = t0 - pd.Timedelta(hours=margen_horas)
         fin = t0 + pd.Timedelta(hours=margen_horas)
 
@@ -70,46 +74,103 @@ class Trayectoria:
 
         u, v, el = self._posiciones_sol(times)
 
-        dentro = []
-        for ui, vi, ei in zip(u, v, el):
-            dentro.append(self._esta_dentro(ui, vi, ei))
-        dentro = np.array(dentro, dtype=bool)
+        dentro = np.array(
+            [
+                self._esta_dentro(ui, vi, ei)
+                for ui, vi, ei in zip(u, v, el)
+            ],
+            dtype=bool
+        )
 
         if not dentro.any():
-            # El sol nunca entra en la imagen en el rango considerado
+            # El Sol no entra en la imagen durante ese día
             return None
 
-        # Buscar transiciones fuera->dentro y dentro->fuera
-        transiciones = []
-        for i in range(1, len(times)):
-            if dentro[i] != dentro[i - 1]:
-                transiciones.append(i)
+        # ---------------------------------------------------------
+        # Buscar todos los intervalos continuos en los que el Sol
+        # permanece dentro de la imagen.
+        # ---------------------------------------------------------
 
-        if len(transiciones) < 2:
-            # Algo raro (por ejemplo siempre dentro), no forzamos nada
+        intervalos = []
+        inicio_intervalo = None
+
+        for i, esta_dentro in enumerate(dentro):
+
+            # Comienza un nuevo intervalo
+            if esta_dentro and inicio_intervalo is None:
+                inicio_intervalo = i
+
+            # Termina el intervalo anterior
+            if not esta_dentro and inicio_intervalo is not None:
+                fin_intervalo = i - 1
+
+                intervalos.append(
+                    (inicio_intervalo, fin_intervalo)
+                )
+
+                inicio_intervalo = None
+
+        # Si el último intervalo llega hasta el final del rango
+        if inicio_intervalo is not None:
+            intervalos.append(
+                (inicio_intervalo, len(dentro) - 1)
+            )
+
+        if not intervalos:
             return None
 
-        # Asumimos un solo intervalo de visibilidad: primera y última transición
-        idx_entrada = transiciones[0]
-        idx_salida = transiciones[-1]
+        # ---------------------------------------------------------
+        # Elegir el intervalo continuo más largo.
+        # De esta forma no se unen tramos separados.
+        # ---------------------------------------------------------
 
-        # Refinar entrada
-        t1_ent = times[idx_entrada - 1]
-        t2_ent = times[idx_entrada]
-        dentro_t1_ent = dentro[idx_entrada - 1]
+        idx_inicio_dentro, idx_fin_dentro = max(
+            intervalos,
+            key=lambda intervalo: intervalo[1] - intervalo[0]
+        )
+
+        # Necesitamos un punto exterior antes de la entrada
+        # y otro después de la salida para poder refinar los cruces.
+        if idx_inicio_dentro == 0:
+            return None
+
+        if idx_fin_dentro >= len(times) - 1:
+            return None
+
+        # ---------------------------------------------------------
+        # Refinar la entrada
+        #
+        # idx_inicio_dentro - 1: fuera de la imagen
+        # idx_inicio_dentro: dentro de la imagen
+        # ---------------------------------------------------------
+
+        t1_ent = times[idx_inicio_dentro - 1]
+        t2_ent = times[idx_inicio_dentro]
 
         t_entrada, u_entrada, v_entrada, _ = self._refinar_cruce(
-            t1_ent, t2_ent, dentro_t1_ent
+            t1_ent,
+            t2_ent,
+            dentro_en_t=False
         )
 
-        # Refinar salida
-        t1_sal = times[idx_salida - 1]
-        t2_sal = times[idx_salida]
-        dentro_t1_sal = dentro[idx_salida - 1]
+        # ---------------------------------------------------------
+        # Refinar la salida
+        #
+        # idx_fin_dentro: dentro de la imagen
+        # idx_fin_dentro + 1: fuera de la imagen
+        # ---------------------------------------------------------
+
+        t1_sal = times[idx_fin_dentro]
+        t2_sal = times[idx_fin_dentro + 1]
 
         t_salida, u_salida, v_salida, _ = self._refinar_cruce(
-            t1_sal, t2_sal, dentro_t1_sal
+            t1_sal,
+            t2_sal,
+            dentro_en_t=True
         )
+
+        if t_salida <= t_entrada:
+            return None
 
         return {
             "t_entrada": t_entrada,
