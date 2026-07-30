@@ -82,9 +82,20 @@ async function runSolution($root) {
     values.style.marginTop = "10px";
     out.appendChild(values);
 
-    const irrSolar = data.irradiancia_solar;
-    const irrHoy = data.irradiacion_hoy;
-    const irrGlobal = data.irradiacion_global;
+    const irrSolar =
+      data.irradiancia_solar != null
+        ? Number(data.irradiancia_solar).toFixed(2)
+        : "N/D";
+
+    const irrHoy =
+      data.irradiacion_hoy != null
+        ? Number(data.irradiacion_hoy).toFixed(2)
+        : "N/D";
+
+    const irrGlobal =
+      data.irradiacion_global != null
+        ? Number(data.irradiacion_global).toFixed(2)
+        : "N/D";
     const duracionHoy = data.duracion_hoy_min;
     const diasSol = data.dias_sol_entra_imagen;
 
