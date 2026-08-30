@@ -4,85 +4,85 @@ import pandas as pd
 from pvlib import solarposition, location, irradiance
 
 
-class Trayectoria:
-    def __init__(self, lat, lon, tz, proyeccion):
+class Trajectory:
+    def __init__(self, lat, lon, tz, projection):
         self.lat = float(lat)
         self.lon = float(lon)
         self.tz = tz
-        self.proyeccion = proyeccion
+        self.projection = projection
 
     # Helpers
-    def _esta_dentro(self, u, v, elev):
+    def _is_inside(self, u, v, elev):
         return (
             np.isfinite(u)
             and np.isfinite(v)
             and np.isfinite(elev)
             and elev > 0
-            and 0 <= u < self.proyeccion.width
-            and 0 <= v < self.proyeccion.height
+            and 0 <= u < self.projection.width
+            and 0 <= v < self.projection.height
         )
 
-    def _posiciones_sol(self, tiempos):
+    def _sun_positions(self, times):
 
         #Versión vectorizada: acepta uno o varios tiempos y devuelve arrays.
 
-        solpos = solarposition.get_solarposition(tiempos, self.lat, self.lon)
+        solpos = solarposition.get_solarposition(times, self.lat, self.lon)
         az = solpos.azimuth.values
         el = solpos.apparent_elevation.values
 
-        u, v = self.proyeccion.vectors2pixels(az, el)
+        u, v = self.projection.vectors2pixels(az, el)
         u = np.array(u, dtype=float)
         v = np.array(v, dtype=float)
         el = np.array(el, dtype=float)
 
         return u, v, el
 
-    def _posicion_sol(self, tiempo):
+    def _sun_position(self, time):
 
         #Versión escalar: acepta un único tiempo y devuelve escalares.
 
-        tiempos = pd.DatetimeIndex([tiempo])
-        u, v, el = self._posiciones_sol(tiempos)
+        times = pd.DatetimeIndex([time])
+        u, v, el = self._sun_positions(times)
         return float(u[0]), float(v[0]), float(el[0])
 
-    def _refinar_cruce(self, t1, t2, dentro_en_t, iteraciones=15):
-        for _ in range(iteraciones):
+    def _refine_crossing(self, t1, t2, inside_at_t, iterations=15):
+        for _ in range(iterations):
             tm = t1 + (t2 - t1) / 2
-            um, vm, em = self._posicion_sol(tm)
-            dentro_m = self._esta_dentro(um, vm, em)
+            um, vm, em = self._sun_position(tm)
+            inside_mid = self._is_inside(um, vm, em)
 
-            if dentro_m == dentro_en_t:
+            if inside_mid == inside_at_t:
                 t1 = tm
             else:
                 t2 = tm
 
-        t_final = t1 + (t2 - t1) / 2
-        u_final, v_final, e_final = self._posicion_sol(t_final)
-        return t_final, u_final, v_final, e_final
+        final_time = t1 + (t2 - t1) / 2
+        final_u, final_v, final_e = self._sun_position(final_time)
+        return final_time, final_u, final_v, final_e
 
-    def buscar_entrada_salida_sol(self, t0, margen_horas=12, paso_grueso_min=5):
+    def find_sun_entry_exit(self, t0, margin_hours=12, coarse_step_min=5):
 
-        inicio = t0 - pd.Timedelta(hours=margen_horas)
-        fin = t0 + pd.Timedelta(hours=margen_horas)
+        start = t0 - pd.Timedelta(hours=margin_hours)
+        end = t0 + pd.Timedelta(hours=margin_hours)
 
         times = pd.date_range(
-            start=inicio,
-            end=fin,
-            freq=f"{paso_grueso_min}min",
+            start=start,
+            end=end,
+            freq=f"{coarse_step_min}min",
             tz=self.tz
         )
 
-        u, v, el = self._posiciones_sol(times)
+        u, v, el = self._sun_positions(times)
 
-        dentro = np.array(
+        inside = np.array(
             [
-                self._esta_dentro(ui, vi, ei)
+                self._is_inside(ui, vi, ei)
                 for ui, vi, ei in zip(u, v, el)
             ],
             dtype=bool
         )
 
-        if not dentro.any():
+        if not inside.any():
             # El Sol no entra en la imagen durante ese día
             return None
 
@@ -91,32 +91,32 @@ class Trayectoria:
         # permanece dentro de la imagen.
         # ---------------------------------------------------------
 
-        intervalos = []
-        inicio_intervalo = None
+        intervals = []
+        interval_start = None
 
-        for i, esta_dentro in enumerate(dentro):
+        for i, is_inside in enumerate(inside):
 
             # Comienza un nuevo intervalo
-            if esta_dentro and inicio_intervalo is None:
-                inicio_intervalo = i
+            if is_inside and interval_start is None:
+                interval_start = i
 
             # Termina el intervalo anterior
-            if not esta_dentro and inicio_intervalo is not None:
-                fin_intervalo = i - 1
+            if not is_inside and interval_start is not None:
+                interval_end = i - 1
 
-                intervalos.append(
-                    (inicio_intervalo, fin_intervalo)
+                intervals.append(
+                    (interval_start, interval_end)
                 )
 
-                inicio_intervalo = None
+                interval_start = None
 
         # Si el último intervalo llega hasta el final del rango
-        if inicio_intervalo is not None:
-            intervalos.append(
-                (inicio_intervalo, len(dentro) - 1)
+        if interval_start is not None:
+            intervals.append(
+                (interval_start, len(inside) - 1)
             )
 
-        if not intervalos:
+        if not intervals:
             return None
 
         # ---------------------------------------------------------
@@ -124,65 +124,65 @@ class Trayectoria:
         # De esta forma no se unen tramos separados.
         # ---------------------------------------------------------
 
-        idx_inicio_dentro, idx_fin_dentro = max(
-            intervalos,
-            key=lambda intervalo: intervalo[1] - intervalo[0]
+        inside_start_idx, inside_end_idx = max(
+            intervals,
+            key=lambda interval: interval[1] - interval[0]
         )
 
         # Necesitamos un punto exterior antes de la entrada
         # y otro después de la salida para poder refinar los cruces.
-        if idx_inicio_dentro == 0:
+        if inside_start_idx == 0:
             return None
 
-        if idx_fin_dentro >= len(times) - 1:
+        if inside_end_idx >= len(times) - 1:
             return None
 
         # ---------------------------------------------------------
         # Refinar la entrada
         #
-        # idx_inicio_dentro - 1: fuera de la imagen
-        # idx_inicio_dentro: dentro de la imagen
+        # inside_start_idx - 1: fuera de la imagen
+        # inside_start_idx: dentro de la imagen
         # ---------------------------------------------------------
 
-        t1_ent = times[idx_inicio_dentro - 1]
-        t2_ent = times[idx_inicio_dentro]
+        entry_t1 = times[inside_start_idx - 1]
+        entry_t2 = times[inside_start_idx]
 
-        t_entrada, u_entrada, v_entrada, _ = self._refinar_cruce(
-            t1_ent,
-            t2_ent,
-            dentro_en_t=False
+        entry_time, entry_u, entry_v, _ = self._refine_crossing(
+            entry_t1,
+            entry_t2,
+            inside_at_t=False
         )
 
         # ---------------------------------------------------------
         # Refinar la salida
         #
-        # idx_fin_dentro: dentro de la imagen
-        # idx_fin_dentro + 1: fuera de la imagen
+        # inside_end_idx: dentro de la imagen
+        # inside_end_idx + 1: fuera de la imagen
         # ---------------------------------------------------------
 
-        t1_sal = times[idx_fin_dentro]
-        t2_sal = times[idx_fin_dentro + 1]
+        exit_t1 = times[inside_end_idx]
+        exit_t2 = times[inside_end_idx + 1]
 
-        t_salida, u_salida, v_salida, _ = self._refinar_cruce(
-            t1_sal,
-            t2_sal,
-            dentro_en_t=True
+        exit_time, exit_u, exit_v, _ = self._refine_crossing(
+            exit_t1,
+            exit_t2,
+            inside_at_t=True
         )
 
-        if t_salida <= t_entrada:
+        if exit_time <= entry_time:
             return None
 
         return {
-            "t_entrada": t_entrada,
-            "u_entrada": u_entrada,
-            "v_entrada": v_entrada,
-            "t_salida": t_salida,
-            "u_salida": u_salida,
-            "v_salida": v_salida,
+            "entry_time": entry_time,
+            "entry_u": entry_u,
+            "entry_v": entry_v,
+            "exit_time": exit_time,
+            "exit_u": exit_u,
+            "exit_v": exit_v,
         }
 
     @staticmethod
-    def es_azul(rgb):
+    def is_blue(rgb):
 
         r, g, b = rgb
 
@@ -224,22 +224,22 @@ class Trayectoria:
 
         return True
 
-    def estimar_longitud_px(self, t_ini, t_fin, freq="1min"):
-        times_g = pd.date_range(start=t_ini, end=t_fin, freq=freq, tz=t_ini.tz)
-        if len(times_g) < 2:
+    def estimate_length_px(self, start_time, end_time, freq="1min"):
+        sample_times = pd.date_range(start=start_time, end=end_time, freq=freq, tz=start_time.tz)
+        if len(sample_times) < 2:
             return 0.0
 
-        u, v, _ = self._posiciones_sol(times_g)
+        u, v, _ = self._sun_positions(sample_times)
 
-        L = 0.0
-        for i in range(1, len(times_g)):
+        length = 0.0
+        for i in range(1, len(sample_times)):
             du = u[i] - u[i - 1]
             dv = v[i] - v[i - 1]
-            L += np.hypot(du, dv)
+            length += np.hypot(du, dv)
 
-        return L
+        return length
 
-    def calcular_ghi_poa_times(self, times, tilt, surf_az):
+    def calculate_ghi_poa_times(self, times, tilt, surf_az):
         site = location.Location(self.lat, self.lon, self.tz)
 
         # Clearsky (GHI, DNI, DHI) para esos tiempos
@@ -260,10 +260,10 @@ class Trayectoria:
 
         return poa
 
-    def calcular_ghi_poa_time(self, tiempo, tilt, surf_az):
+    def calculate_ghi_poa_time(self, time, tilt, surf_az):
         site = location.Location(self.lat, self.lon, self.tz)
 
-        times = pd.DatetimeIndex([tiempo])
+        times = pd.DatetimeIndex([time])
 
         # Clearsky
         clearsky = site.get_clearsky(times)

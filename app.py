@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 from core import PhotoProjection
-from Trayectoria import Trayectoria
+from trayectory import Trajectory
 
 #Flask crea una aplicacion web. app es la variable/centro de control de la aplicacion
 #Imprescindible para definir rutas, ejecutar el servidor, encontrar recursos como
@@ -47,7 +47,7 @@ def reset_session_state():
     for k, v in SESSION_DEFAULTS.items():
         session[k] = v
 #colores de los meses
-COLORES_MESES = {
+MONTH_COLORS = {
     12: "#FFF9E6",  # blanco cálido invernal
     1:  "#FFF2CC",  # crema
     2:  "#FFE699",  # amarillo suave
@@ -185,15 +185,15 @@ def _fmt_hms(td: pd.Timedelta) -> str:
     s = total % 60
     return f"{h:02d}:{m:02d}:{s:02d}"
 
-def _pixel_es_azul(img, u, v, ancho, alto, trayectoria):
+def _pixel_is_blue(img, u, v, width, height, trajectory):
     x = int(round(u))
     y = int(round(v))
 
-    x = min(max(x, 0), ancho - 1)
-    y = min(max(y, 0), alto - 1)
+    x = min(max(x, 0), width - 1)
+    y = min(max(y, 0), height - 1)
 
     rgb = img.getpixel((x, y))
-    return trayectoria.es_azul(rgb)
+    return trajectory.is_blue(rgb)
 # =====================================
 # RUTA PRINCIPAL /api/solution
 # =====================================
@@ -210,11 +210,11 @@ def api_solution():
     lon = float(state["longitud"])
     fov = float(state["fov"])
 
-    foto_ancho = int(state["iop_width"])
-    foto_alto = int(state["iop_height"])
+    photo_width = int(state["iop_width"])
+    photo_height = int(state["iop_height"])
     _pitch = float(state["iop_pitch"])
     _heading = float(state["iop_heading"])
-    hora_iso = state["iop_instant"]
+    iso_time = state["iop_instant"]
 
     #Comprobacion de la disponibilidad de la ultima "image uploaded"
     #Es fundamental la funcion lstrip() porque si rel_path empezara
@@ -230,65 +230,65 @@ def api_solution():
     #img.thumbnail((1200, 1200))
 
     #DESFASE_HORAS = 9
-    #fecha_hora = pd.Timestamp(hora_iso, tz="UTC") - pd.Timedelta(hours=DESFASE_HORAS)
-    fecha_hora = pd.Timestamp(hora_iso, tz="UTC")
+    #capture_datetime = pd.Timestamp(iso_time, tz="UTC") - pd.Timedelta(hours=DESFASE_HORAS)
+    capture_datetime = pd.Timestamp(iso_time, tz="UTC")
 
     #Instancia de PhotoProjection
-    proyeccion = PhotoProjection(
+    projection = PhotoProjection(
         fov=fov,
-        width=foto_ancho,
-        height=foto_alto,
+        width=photo_width,
+        height=photo_height,
         h0=_heading,
         p0=_pitch
     )
     #Instancia de Trayectoria
-    trayectoria = Trayectoria(lat=lat, lon=lon, tz="UTC", proyeccion=proyeccion)
+    trajectory = Trajectory(lat=lat, lon=lon, tz="UTC", projection=projection)
 
     #Calcula de la posicion del Sol en coordenada (u,v) dentro de la propia imagen
-    u, v, _ = trayectoria._posicion_sol(fecha_hora)
+    u, v, _ = trajectory._sun_position(capture_datetime)
 
     #
-    irradiancia_solar = 0.0
+    solar_irradiance = 0.0
 
     # POA en el instante en el que se toma la foto
-    poa_inst = trayectoria.calcular_ghi_poa_time(
-        tiempo=fecha_hora,
+    poa_inst = trajectory.calculate_ghi_poa_time(
+        time=capture_datetime,
         tilt=_pitch,
         surf_az=_heading,
     )
 
     # Comprobacion del color del pixel
-    is_blue = _pixel_es_azul(img, u, v, foto_ancho, foto_alto, trayectoria)
+    is_blue = _pixel_is_blue(img, u, v, photo_width, photo_height, trajectory)
 
     if is_blue:
-        irradiancia_solar = poa_inst["poa_global"]
+        solar_irradiance = poa_inst["poa_global"]
     else:
-        irradiancia_solar = poa_inst["poa_diffuse"]
+        solar_irradiance = poa_inst["poa_diffuse"]
     #
 
-    trayectorias_uv = []
-    irradiacion_global = 0.0
-    irradiacion_hoy = 0.0  # ← AQUÍ
-    fecha_objetivo = fecha_hora.date()  # ← Y AQUÍ
-    datos_iteraciones_hoy = {}
-    dias_sol_entra_imagen = 0
-    duracion_hoy_min = None
+    uv_trajectories = []
+    global_irradiation = 0.0
+    today_irradiation = 0.0  # ← AQUÍ
+    target_date = capture_datetime.date()  # ← Y AQUÍ
+    today_iteration_data = {}
+    days_sun_enters_image = 0
+    today_duration_min = None
 
-    actual_year = fecha_hora.year
-    actual_month = fecha_hora.month
-    actual_day = fecha_hora.day
+    actual_year = capture_datetime.year
+    actual_month = capture_datetime.month
+    actual_day = capture_datetime.day
 
     # 1) Entre 1 Ene y 21 Jun
     if (
             actual_month < 6
             or (actual_month == 6 and actual_day <= 21)
     ):
-        start = fecha_hora.replace(
+        start = capture_datetime.replace(
             year=actual_year - 1,
             month=12,
             day=21
         )
-        end = fecha_hora.replace(
+        end = capture_datetime.replace(
             year=actual_year,
             month=6,
             day=21
@@ -299,12 +299,12 @@ def api_solution():
             actual_month < 12
             or (actual_month == 12 and actual_day <= 21)
     ):
-        start = fecha_hora.replace(
+        start = capture_datetime.replace(
             year=actual_year,
             month=6,
             day=21
         )
-        end = fecha_hora.replace(
+        end = capture_datetime.replace(
             year=actual_year,
             month=12,
             day=21
@@ -312,12 +312,12 @@ def api_solution():
 
     # 3) Entre 22 Dic y 31 Dic
     else:
-        start = fecha_hora.replace(
+        start = capture_datetime.replace(
             year=actual_year,
             month=12,
             day=21
         )
-        end = fecha_hora.replace(
+        end = capture_datetime.replace(
             year=actual_year + 1,
             month=6,
             day=21
@@ -326,9 +326,9 @@ def api_solution():
     tracks_dir = os.path.join(app.root_path, "static", "tracks")
     os.makedirs(tracks_dir, exist_ok=True)
 
-    stamp_foto = (hora_iso.replace(":", "-") if hora_iso
+    photo_stamp = (iso_time.replace(":", "-") if iso_time
                   else datetime.utcnow().strftime("%d-%m-%Y_%H-%M-%S"))
-    fname_out = f"trayectorias_{stamp_foto}.txt"
+    fname_out = f"trajectories_{photo_stamp}.txt"
     fname_out = re.sub(r"[^a-zA-Z0-9_.-]", "_", fname_out)
     fpath_out = os.path.join(tracks_dir, fname_out)
 
@@ -336,49 +336,49 @@ def api_solution():
     # conexiones, etc ), garantizando el cierre del archivo aunque existan errores.
     with open(fpath_out, "w", encoding="utf-8") as f:
 
-        for fecha_hora_k in pd.date_range(start=start, end=end, freq="1D", tz="UTC"):
+        for day_datetime in pd.date_range(start=start, end=end, freq="1D", tz="UTC"):
 
-            t_entrada = t_salida = None
-            u_entrada = v_entrada = None
-            u_salida = v_salida = None
+            entry_time = exit_time = None
+            entry_u = entry_v = None
+            exit_u = exit_v = None
 
             # try-except, similar al try-catch de js. Ambas manejan excepciones (errores)
             # durante la ejecucion de un programa sin que se detenga por completo
             try:
-                resultado = trayectoria.buscar_entrada_salida_sol(
-                    t0=fecha_hora_k,
-                    margen_horas=12,
-                    paso_grueso_min=5
+                result = trajectory.find_sun_entry_exit(
+                    t0=day_datetime,
+                    margin_hours=12,
+                    coarse_step_min=5
                 )
 
-                if resultado is None:
-                    print(f"[SOL] El sol no entra en la imagen (t0={fecha_hora_k.isoformat()}).")
+                if result is None:
+                    print(f"[SOL] El sol no entra en la imagen (t0={day_datetime.isoformat()}).")
                     continue
 
-                dias_sol_entra_imagen += 1
+                days_sun_enters_image += 1
 
-                t_entrada = resultado["t_entrada"]
-                u_entrada = resultado["u_entrada"]
-                v_entrada = resultado["v_entrada"]
-                t_salida = resultado["t_salida"]
-                u_salida = resultado["u_salida"]
-                v_salida = resultado["v_salida"]
+                entry_time = result["entry_time"]
+                entry_u = result["entry_u"]
+                entry_v = result["entry_v"]
+                exit_time = result["exit_time"]
+                exit_u = result["exit_u"]
+                exit_v = result["exit_v"]
 
             except Exception as e:
                 print(f"[ERROR] calculando entrada/salida del sol:", e)
                 continue
 
-            if (t_entrada is None) or (t_salida is None) or (t_salida <= t_entrada):
+            if (entry_time is None) or (exit_time is None) or (exit_time <= entry_time):
                 print("[TRAYECTORIA] No se genera: tiempos no válidos.")
                 continue
             # Rango de fechas y horas (DatetimeIndex) con un intervalo de tiempo ajustable
-            times_i = pd.date_range(start=t_entrada, end=t_salida, freq="30min", tz="UTC")
+            times_i = pd.date_range(start=entry_time, end=exit_time, freq="30min", tz="UTC")
             if len(times_i) < 2:
                 print("[TRAYECTORIA] No se genera: intervalo corto.")
                 continue
 
             try:
-                poa_df = trayectoria.calcular_ghi_poa_times(
+                poa_df = trajectory.calculate_ghi_poa_times(
                     times=times_i,
                     tilt=_pitch,
                     surf_az=_heading,
@@ -389,28 +389,28 @@ def api_solution():
 
             poa_vals = [None] * len(times_i)
             valid = [False] * len(times_i)
-            lista_u = []
-            lista_v = []
-            es_dia_foto = fecha_hora_k.date() == fecha_objetivo
+            u_list = []
+            v_list = []
+            is_photo_day = day_datetime.date() == target_date
 
             try:
                 for i, t_i in enumerate(times_i):
-                    u_i, v_i, el_i = trayectoria._posicion_sol(t_i)
+                    u_i, v_i, el_i = trajectory._sun_position(t_i)
 
-                    #lista_u.append(u_i)
-                    #lista_v.append(v_i)
+                    #u_list.append(u_i)
+                    #v_list.append(v_i)
 
-                    dentro_i = trayectoria._esta_dentro(u_i, v_i, el_i)
-                    if not dentro_i:
+                    inside_i = trajectory._is_inside(u_i, v_i, el_i)
+                    if not inside_i:
                         continue
 
-                    lista_u.append(u_i)
-                    lista_v.append(v_i)
+                    u_list.append(u_i)
+                    v_list.append(v_i)
 
-                    is_blue = _pixel_es_azul(img, u_i, v_i, foto_ancho, foto_alto, trayectoria)
+                    is_blue = _pixel_is_blue(img, u_i, v_i, photo_width, photo_height, trajectory)
 
-                    if es_dia_foto:
-                        datos_iteraciones_hoy[i + 1] = {
+                    if is_photo_day:
+                        today_iteration_data[i + 1] = {
                             "t_i": t_i.strftime("%d/%m/%Y %H:%M"),
                             "u_i": float(u_i),
                             "v_i": float(v_i),
@@ -432,53 +432,53 @@ def api_solution():
                 continue
 
             # --- Integración (irradiancia_total) ---
-            irradiacion_total = 0.0
+            total_irradiation = 0.0
             for i in range(len(times_i) - 1):
                 if not (valid[i] and valid[i + 1]):
                     continue
                 dt_h = (times_i[i + 1] - times_i[i]).total_seconds() / 3600.0
-                irradiacion_total += 0.5 * (poa_vals[i] + poa_vals[i + 1]) * dt_h
+                total_irradiation += 0.5 * (poa_vals[i] + poa_vals[i + 1]) * dt_h
 
-            irradiacion_global += irradiacion_total
+            global_irradiation += total_irradiation
 
             # Dibujar los dias 21 de cada mes
-            if len(lista_u) >= 2 and fecha_hora_k.day == 21:
-                mes = int(fecha_hora_k.month)
-                color = COLORES_MESES.get(mes, "#FFFFFF")  # fallback
-                trayectorias_uv.append((fecha_hora_k, lista_u, lista_v, color))
+            if len(u_list) >= 2 and day_datetime.day == 21:
+                month = int(day_datetime.month)
+                color = MONTH_COLORS.get(month, "#FFFFFF")  # fallback
+                uv_trajectories.append((day_datetime, u_list, v_list, color))
             # Dibujar si coincide con el dia de hoy
-            if len(lista_u) >= 2 and fecha_hora_k.date() == fecha_objetivo:
+            if len(u_list) >= 2 and day_datetime.date() == target_date:
                 color = "#FFCC00"  # Amarillo Solar Intenso
-                trayectorias_uv.append((fecha_hora_k, lista_u, lista_v, color))
-                irradiacion_hoy = irradiacion_total
+                uv_trajectories.append((day_datetime, u_list, v_list, color))
+                today_irradiation = total_irradiation
 
-            dt_tray = (t_salida - t_entrada)
+            trajectory_duration = (exit_time - entry_time)
 
-            if fecha_hora_k.date() == fecha_objetivo:
-                duracion_hoy_min = round(dt_tray.total_seconds() / 60)
+            if day_datetime.date() == target_date:
+                today_duration_min = round(trajectory_duration.total_seconds() / 60)
 
             # Escritura en fichero
-            f.write(f"TRAYECTORIA    {fecha_hora_k.strftime('%d/%m/%Y')}\n")
+            f.write(f"TRAYECTORIA    {day_datetime.strftime('%d/%m/%Y')}\n")
 
             # 1) Coordenadas de entrada/salida
             f.write(
-                f"1) (ue, ve) = ({u_entrada:.2f}, {v_entrada:.2f})"
-                f"    -    (us, vs) = ({u_salida:.2f}, {v_salida:.2f})\n"
+                f"1) (ue, ve) = ({entry_u:.2f}, {entry_v:.2f})"
+                f"    -    (us, vs) = ({exit_u:.2f}, {exit_v:.2f})\n"
             )
 
             # 2) Tiempos de entrada/salida y diferencia
-            t_ent_str = t_entrada.tz_convert("UTC").strftime("%H:%M")
-            t_sal_str = t_salida.tz_convert("UTC").strftime("%H:%M")
+            entry_time_str = entry_time.tz_convert("UTC").strftime("%H:%M")
+            exit_time_str = exit_time.tz_convert("UTC").strftime("%H:%M")
             f.write(
-                f"2) t_entrada = {t_ent_str}"
-                f"    -    t_salida = {t_sal_str}"
-                f"    -    Diferencia de tiempo = {_fmt_hms(dt_tray)}\n"
+                f"2) t_entrada = {entry_time_str}"
+                f"    -    t_salida = {exit_time_str}"
+                f"    -    Diferencia de tiempo = {_fmt_hms(trajectory_duration)}\n"
             )
 
             # 3) Irradiancias
             f.write(
-                f"3) Irradiacion_global = {irradiacion_global:.2f}"
-                f"    -    Irradiacion_total = {irradiacion_total:.2f}\n"
+                f"3) Irradiacion_global = {global_irradiation:.2f}"
+                f"    -    Irradiacion_total = {total_irradiation:.2f}\n"
             )
 
             f.write("*" * 80 + "\n")
@@ -488,10 +488,10 @@ def api_solution():
     fig, ax = plt.subplots()
     ax.imshow(img)
 
-    ax.set_xlim(0, foto_ancho)
-    ax.set_ylim(foto_alto, 0)
+    ax.set_xlim(0, photo_width)
+    ax.set_ylim(photo_height, 0)
 
-    for (t_base, tu, tv, color) in trayectorias_uv:
+    for (t_base, tu, tv, color) in uv_trajectories:
         ax.plot(
             tu, tv,
             linewidth=2,
@@ -513,12 +513,12 @@ def api_solution():
 
     return jsonify({
         "image": f"data:image/png;base64,{img_b64}",
-        "irradiancia_solar": irradiancia_solar,
-        "irradiacion_hoy": irradiacion_hoy,
-        "irradiacion_global": irradiacion_global,
-        "datos_iteraciones_hoy": datos_iteraciones_hoy,
-        "duracion_hoy_min": duracion_hoy_min,
-        "dias_sol_entra_imagen": dias_sol_entra_imagen
+        "solar_irradiance": solar_irradiance,
+        "today_irradiation": today_irradiation,
+        "global_irradiation": global_irradiation,
+        "today_iteration_data": today_iteration_data,
+        "today_duration_min": today_duration_min,
+        "days_sun_enters_image": days_sun_enters_image
     })
 
 

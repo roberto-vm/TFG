@@ -82,56 +82,57 @@ async function runSolution($root) {
     values.style.marginTop = "10px";
     out.appendChild(values);
 
-    const irrSolar =
-      data.irradiancia_solar != null
-        ? Number(data.irradiancia_solar).toFixed(2)
+    const solarIrradiance =
+      data.solar_irradiance != null
+        ? Number(data.solar_irradiance).toFixed(2)
         : "N/D";
 
-    const irrHoy =
-      data.irradiacion_hoy != null
-        ? Number(data.irradiacion_hoy).toFixed(2)
+    const todayIrradiation =
+      data.today_irradiation != null
+        ? Number(data.today_irradiation).toFixed(2)
         : "N/D";
 
-    const irrGlobal =
-      data.irradiacion_global != null
-        ? Number(data.irradiacion_global).toFixed(2)
+    const globalIrradiation =
+      data.global_irradiation != null
+        ? Number(data.global_irradiation).toFixed(2)
         : "N/D";
-    const duracionHoy = data.duracion_hoy_min;
-    const diasSol = data.dias_sol_entra_imagen;
+
+    const todayDurationMin = data.today_duration_min;
+    const daysSunEntersImage = data.days_sun_enters_image;
 
     values.innerHTML = `
      <p>
        <strong>Irradiancia solar:</strong><br>
-       ${irrSolar ?? "N/D"} W/m²
+       ${solarIrradiance ?? "N/D"} W/m²
      </p>
 
      <p>
        <strong>Irradiación hoy:</strong><br>
-       ${irrHoy ?? "N/D"} Wh/m²<br>
-       <small>Tiempo con el Sol en la imagen: ${duracionHoy ?? "N/D"} min</small>
+       ${todayIrradiation ?? "N/D"} Wh/m²<br>
+       <small>Tiempo con el Sol en la imagen: ${todayDurationMin ?? "N/D"} min</small>
      </p>
 
      <p>
        <strong>Irradiación global:</strong><br>
-       ${irrGlobal ?? "N/D"} Wh/m²<br>
-       <small>${diasSol ?? "N/D"} días con Sol en la imagen</small>
+       ${globalIrradiation ?? "N/D"} Wh/m²<br>
+       <small>${daysSunEntersImage ?? "N/D"} días con Sol en la imagen</small>
      </p>
      `;
 
-    const datosIteracionesHoy = data.datos_iteraciones_hoy || {};
+    const todayIterationData = data.today_iteration_data || {};
 
-    const filas = Object.entries(datosIteracionesHoy)
-      .map(([iteracion, dato]) => {
-        const u = Number(dato.u_i);
-        const v = Number(dato.v_i);
+    const rows = Object.entries(todayIterationData)
+      .map(([iteration, iterationData]) => {
+        const u = Number(iterationData.u_i);
+        const v = Number(iterationData.v_i);
 
         return `
           <tr>
-            <td style="padding:6px;border-bottom:1px solid #ddd;">${iteracion}</td>
-            <td style="padding:6px;border-bottom:1px solid #ddd;">${dato.t_i ?? "N/D"}</td>
+            <td style="padding:6px;border-bottom:1px solid #ddd;">${iteration}</td>
+            <td style="padding:6px;border-bottom:1px solid #ddd;">${iterationData.t_i ?? "N/D"}</td>
             <td style="padding:6px;border-bottom:1px solid #ddd;">${Number.isFinite(u) ? u.toFixed(2) : "N/D"}</td>
             <td style="padding:6px;border-bottom:1px solid #ddd;">${Number.isFinite(v) ? v.toFixed(2) : "N/D"}</td>
-            <td style="padding:6px;border-bottom:1px solid #ddd;">${dato.is_blue ? "NO" : "SI"}</td>
+            <td style="padding:6px;border-bottom:1px solid #ddd;">${iterationData.is_blue ? "NO" : "SI"}</td>
           </tr>
         `;
       })
@@ -141,7 +142,7 @@ async function runSolution($root) {
       <h4 style="margin:0 0 8px 0;">Datos de iteraciones del día de la foto</h4>
 
       ${
-        filas
+        rows
           ? `
             <div style="overflow-x:auto;background:#fff;border:1px solid #ddd;">
               <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
@@ -155,7 +156,7 @@ async function runSolution($root) {
                   </tr>
                 </thead>
                 <tbody>
-                  ${filas}
+                  ${rows}
                 </tbody>
               </table>
             </div>
